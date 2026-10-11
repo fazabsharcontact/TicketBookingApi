@@ -1,6 +1,7 @@
 import express from 'express';
 import db from './config/db.js';
 import eventRoutes from './routes/events.routes.js';
+import bookingRoutes from './routes/bookings.routes.js';
 
 const app = express();
 
@@ -27,5 +28,6 @@ app.get('/api/health', async (req, res) => {
 
 // mendaftarkan route event api
 app.use('/api', eventRoutes);
+app.use('/api', bookingRoutes);
 
 export default app;

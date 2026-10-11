@@ -5,13 +5,13 @@ import { z } from 'zod';
 export const createBookingNaive = async (req, res) => {
     try {
         // validasi input
-        const validatedData = CreateBookingSchema.parse(req, body);
+        const validatedData = CreateBookingSchema.parse(req.body);
         const { seat_id, user_email, idempotency_key } = validatedData;
 
         // mengecek apakah kursi tersedia (langkah naif)
         const seatCheck = await db.query(`SELECT * FROM seats WHERE id = $1`, [seat_id]);
 
-        if (seatCheck.rows.length(0) === 0) {
+        if (seatCheck.rows.length[0] === 0) {
             return res.status(404).json({ status: 'NOT_FOUND', message: 'Kursi tidak tersedia'});
         }
 
