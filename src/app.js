@@ -1,10 +1,12 @@
 import express from 'express';
 import db from './config/db.js';
+import eventRoutes from './routes/events.routes.js';
 
 const app = express();
 
 app.use(express.json());
 
+// route dasar & health check
 app.get('/api/health', async (req, res) => {
     try {
         const result = await db.query('SELECT NOW()');
@@ -22,5 +24,8 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
+
+// mendaftarkan route event api
+app.use('/api', eventRoutes);
 
 export default app;
