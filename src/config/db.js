@@ -9,6 +9,8 @@ console.log(`mencoba terhubung ke URL:`, process.env.DATABASE_URL);
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    max: 20,
+    idleTimeoutMillis: 1000,
 });
 
 pool.connect((err, client, release) => {

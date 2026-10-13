@@ -2,40 +2,66 @@ import db from '../config/db.js';
 import { CreateBookingSchema } from '../validators/bookings.validator.js';
 import { z } from 'zod';
 
-export const createBookingNaive = async (req, res) => {
+export const createBookingSecure = async (req, res) => {
+    // Ambil client koneksi dari Pool
+    const client = await db.pool.connect();
+
     try {
-        // validasi input
-        const validatedData = CreateBookingSchema.parse(req.body);
-        const { seat_id, user_email, idempotency_key } = validatedData;
+        // Validasi data input
+        const validateData = CreateBookingSchema.parse(req.body);
+        const { seat_id, user_email, idempotency_key } = validateData;
 
-        // mengecek apakah kursi tersedia (langkah naif)
-        const seatCheck = await db.query(`SELECT * FROM seats WHERE id = $1`, [seat_id]);
+        // Mulai transaksi
+        await client.query('BEGIN');
 
-        if (seatCheck.rows.length[0] === 0) {
-            return res.status(404).json({ status: 'NOT_FOUND', message: 'Kursi tidak tersedia'});
+        // Mengunci baris kursi dengan FOR UPDATE
+        const seatCheck = await client.query(
+            'SELECT * FROM seats WHERE id = $1 FOR UPDATE',
+            [seat_id]
+        );
+
+        if (seatCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({
+                status: 'NOT FOUND',
+                message: 'Kursi tidak ditemukan'
+            });
         }
 
+        // Ambil objek baris pertama
         const seat = seatCheck.rows[0];
-        if (seat.status === 'sold') {
-            return res.status(409).json({ status: 'CONFLICT', message: 'Kursi sudah terjual'});
+
+        // Validasi status kursi setelah penguncian
+        if (seatCheck === 'sold') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({
+                status: 'CONFLICT',
+                message: 'Kursi sudah terjual'
+            });
         }
 
-        // ubah status kursi menjadi sold
-        await db.query('UPDATE seats SET status = \'sold\' WHERE id = $1', [seat_id]);
+        // Ubah status menjadi sold
+        await client.query(
+            "UPDATE seats SET status = 'sold' WHERE id = $1",
+            [seat_id]
+        );
 
-        // masukan data ke tabel booking
-        const bookingResult = await db.query(
+        const bookingResult = await client.query(
             'INSERT INTO bookings (seat_id, user_email, idempotency_key) VALUES ($1, $2, $3) RETURNING *',
             [seat_id, user_email, idempotency_key]
         );
 
-        res.status(201).json({
+        // Selesai transaksi
+        await client.query('COMMIT');
+
+        return res.status(201).json({
             status: 'SUCCESS',
-            message: 'kursi berhasil dipesan',
+            message: 'Kursi berhasil dipesan',
             data: bookingResult.rows[0]
         });
-
     } catch (error) {
+        await client.query('ROLLBACK');
+
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 status: 'VALIDATION_ERROR',
@@ -43,10 +69,18 @@ export const createBookingNaive = async (req, res) => {
             });
         }
 
-         // menangani error jika idempotency_key error di tingkat database
-         if (error.code === '23505') {
-            return res.status(409).json({ status: 'CONFLICT', message: 'Transaksi duplikat (idempotency_key telah digunakan)'});
-         }
-         res.status(500).json({ status: 'ERROR', message: error.message });
+        if (error.code === '23505') {
+            return res.status(409).json({
+                status: 'CONFLICT',
+                message: 'Transaksi duplikat (idempotency_key telah digunakan)'
+            });
+        } 
+        return res.status(500).json({
+            status: 'ERROR',
+            message: error.message
+        });
+    } finally {
+        // Mengembalikan client ke Pool
+        client.release();
     }
 };

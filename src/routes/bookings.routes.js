@@ -1,8 +1,8 @@
 import express from 'express';
-import { createBookingNaive } from '../controllers/bookings.controller.js';
+import { createBookingSecure } from '../controllers/bookings.controller.js';
 
 const router = express.Router();
 
-router.post('/bookings', createBookingNaive);
+router.post('/bookings', createBookingSecure);
 
 export default router;
