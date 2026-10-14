@@ -3,55 +3,47 @@ import { CreateBookingSchema } from '../validators/bookings.validator.js';
 import { z } from 'zod';
 
 export const createBookingSecure = async (req, res) => {
-    // Ambil client koneksi dari Pool
+    // 1. Ambil 1 client koneksi khusus dari pool untuk isolasi transaksi
     const client = await db.pool.connect();
-
+    
     try {
-        // Validasi data input
-        const validateData = CreateBookingSchema.parse(req.body);
-        const { seat_id, user_email, idempotency_key } = validateData;
+        // Validasi input menggunakan zod
+        const validatedData = CreateBookingSchema.parse(req.body);
+        const { seat_id, user_email, idempotency_key } = validatedData;
 
-        // Mulai transaksi
+        // 2. MULAI TRANSAKSI
         await client.query('BEGIN');
 
-        // Mengunci baris kursi dengan FOR UPDATE
+        // 3. Kunci baris kursi di PostgreSQL secara ketat
         const seatCheck = await client.query(
-            'SELECT * FROM seats WHERE id = $1 FOR UPDATE',
+            'SELECT * FROM seats WHERE id = $1 FOR UPDATE', 
             [seat_id]
         );
 
         if (seatCheck.rows.length === 0) {
             await client.query('ROLLBACK');
-            return res.status(404).json({
-                status: 'NOT FOUND',
-                message: 'Kursi tidak ditemukan'
-            });
+            return res.status(404).json({ status: 'NOT_FOUND', message: 'Kursi tidak tersedia'});
         }
 
-        // Ambil objek baris pertama
-        const seat = seatCheck.rows[0];
-
-        // Validasi status kursi setelah penguncian
-        if (seatCheck === 'sold') {
+        // AKURAT: Ambil baris pertama hasil query
+        const seat = seatCheck.rows[0]; 
+        
+        // Cek status asli dari database pasca penguncian
+        if (seat.status === 'sold') {
             await client.query('ROLLBACK');
-            return res.status(409).json({
-                status: 'CONFLICT',
-                message: 'Kursi sudah terjual'
-            });
+            return res.status(409).json({ status: 'CONFLICT', message: 'Kursi sudah terjual'});
         }
 
-        // Ubah status menjadi sold
-        await client.query(
-            "UPDATE seats SET status = 'sold' WHERE id = $1",
-            [seat_id]
-        );
+        // 4. Ubah status kursi menjadi sold (WAJIB pakai client.query)
+        await client.query("UPDATE seats SET status = 'sold' WHERE id = $1", [seat_id]);
 
+        // 5. Masukkan data ke tabel booking (WAJIB pakai client.query)
         const bookingResult = await client.query(
             'INSERT INTO bookings (seat_id, user_email, idempotency_key) VALUES ($1, $2, $3) RETURNING *',
             [seat_id, user_email, idempotency_key]
         );
 
-        // Selesai transaksi
+        // 6. KOMIT TRANSAKSI PERMANEN
         await client.query('COMMIT');
 
         return res.status(201).json({
@@ -59,7 +51,9 @@ export const createBookingSecure = async (req, res) => {
             message: 'Kursi berhasil dipesan',
             data: bookingResult.rows[0]
         });
+
     } catch (error) {
+        // Batalkan seluruh rangkaian query di atas jika terjadi tabrakan/gagal di tengah jalan
         await client.query('ROLLBACK');
 
         if (error instanceof z.ZodError) {
@@ -69,18 +63,12 @@ export const createBookingSecure = async (req, res) => {
             });
         }
 
-        if (error.code === '23505') {
-            return res.status(409).json({
-                status: 'CONFLICT',
-                message: 'Transaksi duplikat (idempotency_key telah digunakan)'
-            });
-        } 
-        return res.status(500).json({
-            status: 'ERROR',
-            message: error.message
-        });
+         if (error.code === '23505') {
+            return res.status(409).json({ status: 'CONFLICT', message: 'Transaksi duplikat (idempotency_key telah digunakan)'});
+         }
+         return res.status(500).json({ status: 'ERROR', message: error.message });
     } finally {
-        // Mengembalikan client ke Pool
+        // 7. Selalu kembalikan client ke dalam pool
         client.release();
     }
 };
