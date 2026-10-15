@@ -7,6 +7,8 @@ const app = express();
 
 app.use(express.json());
 
+app.use(express.static('public'));
+
 // route dasar & health check
 app.get('/api/health', async (req, res) => {
     try {
