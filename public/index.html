@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>War Ticket - Kunkurensi Sistem</title>
+
+    // CSS
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Sistem Pemesanan Tiket Konser</h1>
+        <p class="subtitle">Buka 2 Tab Berdampingan Untuk Menguji Race Condition.</p>
+
+        <!-- informasi event -->
+         <div id="event-info" class="card">
+            <h3>Memuat Informasi Konser...</h3>
+         </div>
+
+         <!-- denah kursi -->
+        <div class="seat-container card">
+            <h3>Denak Kursi</h3>
+            <div class="legend">
+                <span class="legend-item"><span class="box available"></span>Tersedia</span>
+                <span class="legend-item"><span class="box sold"></span>Terjual</span>
+            </div>
+            <div id="seat-map" class="grid-seats">
+                <!-- kursi akan dirender otomatis oleh javascript -->
+            </div>
+        </div>
+
+        <!-- Panel Pemesanan -->
+         <div class="booking-panel card">
+                <h3>Formulir Pemesanan</h3>
+                <div class="form-group">
+                    <label for="">ID Kursi Terpilih:</label>
+                    <input type="text" id="selected-seat-id" readonly placeholder="Klik Kursi Pada Denah">
+                </div>
+                <div class="form-group">
+                    <label for="">Email Pembeli:</label>
+                    <input type="email" id="user-email" placeholder="user@example.com" value="pembeli@example.com">
+                </div>
+                <button id="btn-pesan" class="btn" disabled>Pesan Kursi Sekaran</button>
+                <div id="response-message" class="message"></div>
+         </div>
+    </div>
+
+    // JAVASCRIPT
+    <script src="frontend.js"></script>
+</body>
+</html>
