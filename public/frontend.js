@@ -1,4 +1,4 @@
-const EVENT_ID = 5;
+const EVENT_ID = 2;
 let kursiTerpilihId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,9 +12,9 @@ async function muatInformasiEventDanKursi() {
         const response = await fetch(`api/events/${EVENT_ID}/seats`);
         const result = await response.json();
 
-        if (result === 'SUCCESS') {
+        if (result.status === 'SUCCESS') {
             const eventInfo = document.getElementById('event-info');
-            const eventDate = new Date(result.data.event.start_at).toLocaleString('id-ID');
+            const eventDate = new Date(result.data.event.starts_at).toLocaleString('id-ID');
             eventInfo.innerHTML = `
                 <h2>${result.data.event.name}</h2>
                 <p><strong>Waktu Acara</strong> ${eventDate}</p>
@@ -22,11 +22,11 @@ async function muatInformasiEventDanKursi() {
 
             // Render denah kursi
             const seatMap = document.getElementById('seat-map');
-            seatMap = innerHTML = ''; // Bersihkan loader
+            seatMap.innerHTML = ''; // Bersihkan loader
 
             result.data.seats.forEach(seat => {
                 const button = document.createElement('button');
-                button.ClassName = `seat ${seat.status}`;
+                button.className = `seat ${seat.status}`;
                 button.innerText = seat.label;
                 button.dataset.id = seat.id;
                 button.dataset.status = seat.status;
@@ -113,7 +113,7 @@ function setupEventListeners() {
 // helper untuk menampilkan pesan
 function tampilkanPesan(teks, tipe) {
     const msgDiv = document.getElementById('response-message');
-    msgDiv,innerText = teks;
+    msgDiv.innerText = teks;
     msgDiv.style.display = 'block';
 
     if (tipe === 'success') {
