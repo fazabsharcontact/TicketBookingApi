@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Mengambil data dari Backend API
 async function muatInformasiEventDanKursi() {
     try {
-        const response = await fetch(`api/events/${EVENT_ID}/seats`);
+        const response = await fetch(`/api/events/${EVENT_ID}/seats`);
         const result = await response.json();
 
         if (result.status === 'SUCCESS') {
@@ -94,9 +94,9 @@ function setupEventListeners() {
             const result = await response.json();
 
             if (response.status === 201) {
-                tampilkanPesan(`Sukses! Kursi berhasil anda amankan! ID BOOKING: ${result.data[0].id}`, 'success');
+                tampilkanPesan(`Sukses! Kursi berhasil anda amankan! ID BOOKING: ${result.data.id}`, 'success');
             } else if (response.status === 409) {
-                tampilkanPesan(`GAGAL: ${result.message || 'Kursi sudah terjual ke orang lain!', 'error'}`);
+                tampilkanPesan(`GAGAL: ${result.message || 'Kursi sudah terjual ke orang lain!'}`, 'error');
             } else {
                 tampilkanPesan(`Terjadi kesalahan: ${result.message}`, 'error');
             }
