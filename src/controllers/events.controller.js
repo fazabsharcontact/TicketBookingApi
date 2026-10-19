@@ -74,3 +74,20 @@ export const getEventSeats = async (req, res) => {
         res.status(500).json({ status: 'ERROR', message: error.message });
     }
 };
+
+export const getLatestEvent = async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM events ORDER BY id DESC LIMIT 1');
+
+        if (result.rows.length === 0) {
+            return res.json({ status: 'EMPTY', message: 'Belum ada acara di database' });
+        }
+
+        res.json({
+            status: 'SUCCESS',
+            data: result.rows[0]
+        });
+    } catch (error) {
+        res.status(500).json({ status: 'ERROR', message: error.message });
+    }
+};
