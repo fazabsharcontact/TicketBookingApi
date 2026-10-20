@@ -1,4 +1,4 @@
-const EVENT_ID = null;
+let EVENT_ID = null;
 let kursiTerpilihId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -23,6 +23,8 @@ async function inisialisasiEvent() {
 
             // memuat denah kursi
             await muatInformasiEventDanKursi();
+
+            document.getElementById('response-message').style.display = 'none';
         } else if (result.status === 'EMPTY') {
             tampilkanPesan('database kosong, otomatis membuat event baru', 'info');
 
