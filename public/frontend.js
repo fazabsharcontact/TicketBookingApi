@@ -1,10 +1,64 @@
-const EVENT_ID = 2;
+const EVENT_ID = null;
 let kursiTerpilihId = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    muatInformasiEventDanKursi();
+document.addEventListener('DOMContentLoaded', async () => {
+    await inisialisasiEvent();
     setupEventListeners();
 });
+
+// cek, simpan, atau buat event otomatis
+async function inisialisasiEvent() {
+    try {
+        tampilkanPesan('Menyinkronkan status acara dengan server...', 'info');
+
+        // cek apakah ada rute event terbaru di database backend
+        const response = await fetch('/api/events/latest');
+        const result = await response.json();
+
+        if (result.status === 'SUCCESS') {
+            // menyimpan id di db ke local
+            EVENT_ID = result.data.id;
+            localStorage.setItem('ACTIVE_EVENT_ID', EVENT_ID);
+            console.log(`menggunakan id aktif dari db: ${EVENT_ID}`);
+
+            // memuat denah kursi
+            await muatInformasiEventDanKursi();
+        } else if (result.status === 'EMPTY') {
+            tampilkanPesan('database kosong, otomatis membuat event baru', 'info');
+
+            const createResponse = await fetch('/api/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: 'Konser musik faza auto-generated',
+                    starts_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    total_seats: 5
+                })
+            });
+
+            const createResult = await createResponse.json();
+
+            if (createResult.status === 'SUCCESS') {
+                EVENT_ID = createResult.data.event.id;
+                localStorage.setItem('ACTIVE_EVENT_ID', EVENT_ID);
+                tampilkanPesan('acara baru barhasil dibuat otomatis', 'success');
+
+                await muatInformasiEventDanKursi();
+            } else {
+                tampilkanPesan('gagal membuat acara otomatis', 'error');
+            }
+        }
+    } catch (error) {
+        // jika server online, mencoba mengambil sisa memeori di local
+        EVENT_ID = localStorage.getItem('ACTIVE_EVENT_ID');
+        if (EVENT_ID) {
+            console.log(`server online, menggunakan sisa cache lama di local: ${EVENT_ID}`);
+            await muatInformasiEventDanKursi();
+        } else {
+            tampilkanPesan('gagal terhubung ke server dan tidak ada cache local', 'error');
+        }
+    };
+};
 
 // Mengambil data dari Backend API
 async function muatInformasiEventDanKursi() {
